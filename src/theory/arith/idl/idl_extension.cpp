@@ -246,11 +246,36 @@ void IdlExtension::processAssertion(TNode assertion)
   }
 }
 
+/**
+ * @brief Finds any negative cycle using the Bellman-Ford algorithm
+ * 
+ * @return True if negative cycle is present, otherwise False.
+ */
 bool IdlExtension::negativeCycle()
 {
-  // --------------------------------------------------------------------------
-  // TODO: write the code to detect a negative cycle.
-  // --------------------------------------------------------------------------
+  std::vector<Rational> dv;
+
+  // Initialize all vertices to 0
+  for (int i = 0; i < d_matrix.size(); i++)
+    dv.push_back(0);
+
+  // Find shortest paths
+  for (int i = 0; i < d_matrix.size() - 1; i++) {
+    for (int row = 0; row < d_matrix.size(); row++) {
+      for (int col = 0; col < d_matrix[0].size(); col++) {
+        if (d_valid[row][col] && dv[row] + d_matrix[row][col] < dv[col])
+          dv[col] = dv[row] + d_matrix[row][col];
+      }
+    }
+  }
+
+  // Iterate once more to detect a negative cycle
+  for (int row = 0; row < d_matrix.size(); row++) {
+    for (int col = 0; col < d_matrix[0].size(); col++) {
+      if (d_valid[row][col] && dv[row] + d_matrix[row][col] < dv[col])
+        return true;
+    }
+  }
 
   return false;
 }
