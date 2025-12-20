@@ -97,15 +97,23 @@ Node IdlExtension::ppStaticRewrite(TNode atom)
     Kind k = Kind::EQUAL;
     switch (atom.getKind())
     {
-      // -------------------------------------------------------------------------
-      // TODO: Handle these cases.
-      // -------------------------------------------------------------------------
+      // @OmerElmaliach: Change kind according to previous one
       case Kind::EQUAL:
+        break;
       case Kind::LT:
+        k = Kind::GT;
+        break;
       case Kind::LEQ:
+        k = Kind::GEQ;
+        break;
       case Kind::GT:
+        k= Kind::LT;
+        break;
       case Kind::GEQ:
-      default: break;
+        k = Kind::LEQ;
+        break;
+      default:
+        break;
     }
     return ppStaticRewrite(nm->mkNode(k, atom[1], atom[0]));
   }
@@ -113,11 +121,9 @@ Node IdlExtension::ppStaticRewrite(TNode atom)
   {
     // Handle the case where there are no constants, e.g., (= x y) where both
     // x and y are variables
-    Node ret = atom;
-    // -------------------------------------------------------------------------
-    // TODO: Handle this case.
-    // -------------------------------------------------------------------------
-    return ret;
+    
+    // @OmerElmaliach
+    return ppStaticRewrite(nm->mkNode(atom.getKind(), nm->mkNode(Kind::SUB, atom[0], atom[1]), nm->mkConstInt(0)));
   }
 
   switch (atom.getKind())
@@ -133,15 +139,28 @@ Node IdlExtension::ppStaticRewrite(TNode atom)
       return nm->mkNode(Kind::AND, l_le_r, r_le_l);
     }
 
-    // -------------------------------------------------------------------------
-    // TODO: Handle these cases.
-    // -------------------------------------------------------------------------
+    // @OmerElmaliach
     case Kind::LT:
+    {
+      const Rational& right = atom[1].getConst<Rational>();
+      return nm->mkNode(Kind::LEQ, atom[0], nm->mkConstInt(right - 1));
+    }
     case Kind::LEQ:
+      break;
     case Kind::GT:
+    {
+      Node negated_left = nm->mkNode(Kind::SUB, atom[0][1], atom[0][0]);
+      const Rational& right = atom[1].getConst<Rational>();
+      Node negated_right = nm->mkConstInt(-right - 1);
+      return nm->mkNode(Kind::LEQ, negated_left, negated_right);
+    }
     case Kind::GEQ:
-      // -------------------------------------------------------------------------
-
+    {
+      Node negated_left = nm->mkNode(Kind::SUB, atom[0][1], atom[0][0]);
+      const Rational& right = atom[1].getConst<Rational>();
+      Node negated_right = nm->mkConstInt(-right);
+      return nm->mkNode(Kind::LEQ, negated_left, negated_right);
+    }
     default: break;
   }
   return atom;
@@ -246,6 +265,7 @@ void IdlExtension::processAssertion(TNode assertion)
   }
 }
 
+// @OmerElmaliach
 /**
  * @brief Finds any negative cycle using the Bellman-Ford algorithm
  * 
@@ -256,13 +276,13 @@ bool IdlExtension::negativeCycle()
   std::vector<Rational> dv;
 
   // Initialize all vertices to 0
-  for (int i = 0; i < d_matrix.size(); i++)
+  for (size_t i = 0; i < d_matrix.size(); i++)
     dv.push_back(0);
 
   // Find shortest paths
-  for (int i = 0; i < d_matrix.size() - 1; i++) {
-    for (int row = 0; row < d_matrix.size(); row++) {
-      for (int col = 0; col < d_matrix[0].size(); col++) {
+  for (size_t i = 0; i < d_matrix.size() - 1; i++) {
+    for (size_t row = 0; row < d_matrix.size(); row++) {
+      for (size_t col = 0; col < d_matrix[0].size(); col++) {
         if (d_valid[row][col] && dv[row] + d_matrix[row][col] < dv[col])
           dv[col] = dv[row] + d_matrix[row][col];
       }
@@ -270,8 +290,8 @@ bool IdlExtension::negativeCycle()
   }
 
   // Iterate once more to detect a negative cycle
-  for (int row = 0; row < d_matrix.size(); row++) {
-    for (int col = 0; col < d_matrix[0].size(); col++) {
+  for (size_t row = 0; row < d_matrix.size(); row++) {
+    for (size_t col = 0; col < d_matrix[0].size(); col++) {
       if (d_valid[row][col] && dv[row] + d_matrix[row][col] < dv[col])
         return true;
     }
