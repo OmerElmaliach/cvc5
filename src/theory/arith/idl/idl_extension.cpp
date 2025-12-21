@@ -220,11 +220,16 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
                                     const std::set<Node>& termSet)
 {
   std::vector<Rational> distance(d_numVars, Rational(0));
-
-  // ---------------------------------------------------------------------------
-  // TODO: implement model generation by computing the single-source shortest
-  // path from a node that has distance zero to all other nodes
-  // ---------------------------------------------------------------------------
+  // @OmerElmaliach
+  // Find shortest paths
+  for (size_t i = 0; i < d_numVars - 1; i++) {
+    for (size_t row = 0; row < d_numVars; row++) {
+      for (size_t col = 0; col < d_numVars; col++) {
+        if (d_valid[row][col] && distance[col] + d_matrix[row][col] < distance[row])
+          distance[row] = distance[col] + d_matrix[row][col];
+      }
+    }
+  }
 
   NodeManager* nm = NodeManager::currentNM();
   for (size_t i = 0; i < d_numVars; i++)
@@ -280,19 +285,19 @@ bool IdlExtension::negativeCycle()
     dv.push_back(0);
 
   // Find shortest paths
-  for (size_t i = 0; i < d_matrix.size() - 1; i++) {
-    for (size_t row = 0; row < d_matrix.size(); row++) {
-      for (size_t col = 0; col < d_matrix[0].size(); col++) {
-        if (d_valid[row][col] && dv[row] + d_matrix[row][col] < dv[col])
-          dv[col] = dv[row] + d_matrix[row][col];
+  for (size_t i = 0; i < d_numVars - 1; i++) {
+    for (size_t row = 0; row < d_numVars; row++) {
+      for (size_t col = 0; col < d_numVars; col++) {
+        if (d_valid[row][col] && dv[col] + d_matrix[row][col] < dv[row])
+          dv[row] = dv[col] + d_matrix[row][col];
       }
     }
   }
 
   // Iterate once more to detect a negative cycle
-  for (size_t row = 0; row < d_matrix.size(); row++) {
-    for (size_t col = 0; col < d_matrix[0].size(); col++) {
-      if (d_valid[row][col] && dv[row] + d_matrix[row][col] < dv[col])
+  for (size_t row = 0; row < d_numVars; row++) {
+    for (size_t col = 0; col < d_numVars; col++) {
+      if (d_valid[row][col] && dv[col] + d_matrix[row][col] < dv[row])
         return true;
     }
   }
